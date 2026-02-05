@@ -23,11 +23,22 @@ async function uploadImage(bskyAgent, buffer, mediaType) {
 }
 
 async function uploadVideo(bskyAgent, buffer, mediaType) {
-  // Get service auth for video upload
+  // Get service auth for video upload — audience must be the user's PDS DID
   const did = bskyAgent.session.did;
 
+  // Resolve PDS endpoint from DID document
+  const didDoc = await bskyAgent.com.atproto.identity.resolveHandle({ handle: process.env.BLUESKY_IDENTIFIER });
+  const resolvedDid = didDoc.data.did;
+  const plcResponse = await fetch(`https://plc.directory/${resolvedDid}`);
+  const plcData = await plcResponse.json();
+  const pdsEndpoint = plcData.service?.find((s) => s.id === '#atproto_pds')?.serviceEndpoint;
+  const pdsHost = new URL(pdsEndpoint).hostname;
+  const pdsDid = `did:web:${pdsHost}`;
+
+  console.log(`Bluesky: PDS DID resolved to ${pdsDid}`);
+
   const serviceAuth = await bskyAgent.com.atproto.server.getServiceAuth({
-    aud: `did:web:${encodeURIComponent('video.bsky.app')}`,
+    aud: pdsDid,
     lxm: 'com.atproto.repo.uploadBlob',
     exp: Math.floor(Date.now() / 1000) + 60 * 30, // 30 min
   });
