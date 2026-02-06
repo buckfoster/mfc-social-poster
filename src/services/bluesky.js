@@ -110,7 +110,8 @@ async function postToBluesky({ buffer, mediaType, isVideo, caption }) {
   const bskyAgent = await getAgent();
 
   // Parse rich text (handles mentions, links, hashtags)
-  const rt = new RichText({ text: caption });
+  const text = caption || '';
+  const rt = new RichText({ text });
   await rt.detectFacets(bskyAgent);
 
   let embed;
@@ -126,7 +127,7 @@ async function postToBluesky({ buffer, mediaType, isVideo, caption }) {
     const blob = await uploadImage(bskyAgent, buffer, mediaType);
     embed = {
       $type: 'app.bsky.embed.images',
-      images: [{ alt: caption, image: blob }],
+      images: [{ alt: text, image: blob }],
     };
   }
 

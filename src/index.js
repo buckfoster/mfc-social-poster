@@ -18,10 +18,9 @@ function validateBody(req, res, next) {
   if (!mediaUrl) {
     return res.status(400).json({ error: 'mediaUrl is required' });
   }
-  if (!caption) {
-    return res.status(400).json({ error: 'caption is required' });
-  }
 
+  // Default caption to empty string if null/undefined
+  req.body.caption = req.body.caption || '';
   req.body.isVideo = req.body.isVideo || false;
   req.body.mediaType = req.body.mediaType || (req.body.isVideo ? 'video/mp4' : 'image/jpeg');
 
