@@ -77,6 +77,18 @@ app.post('/post/all', authMiddleware, validateBody, async (req, res) => {
     postToBluesky({ buffer, mediaType, isVideo, caption }),
   ]);
 
+  if (twitterResult.status === 'rejected') {
+    console.error('Twitter post error:', twitterResult.reason);
+  } else if (!twitterResult.value?.success) {
+    console.error('Twitter post failed:', twitterResult.value?.error || 'Unknown error');
+  }
+
+  if (blueskyResult.status === 'rejected') {
+    console.error('Bluesky post error:', blueskyResult.reason);
+  } else if (!blueskyResult.value?.success) {
+    console.error('Bluesky post failed:', blueskyResult.value?.error || 'Unknown error');
+  }
+
   const response = {
     twitter:
       twitterResult.status === 'fulfilled'
