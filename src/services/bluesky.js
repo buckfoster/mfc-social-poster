@@ -1,9 +1,11 @@
 const { BskyAgent, RichText } = require('@atproto/api');
 
 let agent = null;
+let loginTime = null;
+const SESSION_MAX_AGE = 90 * 60 * 1000; // 90 minutes
 
 async function getAgent() {
-  if (agent?.session) {
+  if (agent?.session && loginTime && (Date.now() - loginTime < SESSION_MAX_AGE)) {
     return agent;
   }
 
@@ -12,6 +14,7 @@ async function getAgent() {
     identifier: process.env.BLUESKY_IDENTIFIER,
     password: process.env.BLUESKY_PASSWORD,
   });
+  loginTime = Date.now();
 
   console.log('Bluesky: logged in');
   return agent;
@@ -27,12 +30,17 @@ async function uploadVideo(bskyAgent, buffer, mediaType) {
   const did = bskyAgent.session.did;
 
   // Resolve PDS endpoint from DID document
-  const didDoc = await bskyAgent.com.atproto.identity.resolveHandle({ handle: process.env.BLUESKY_IDENTIFIER });
-  const resolvedDid = didDoc.data.did;
-  const plcResponse = await fetch(`https://plc.directory/${resolvedDid}`);
-  const plcData = await plcResponse.json();
-  const pdsEndpoint = plcData.service?.find((s) => s.id === '#atproto_pds')?.serviceEndpoint;
-  const pdsHost = new URL(pdsEndpoint).hostname;
+  let pdsHost;
+  try {
+    const plcResponse = await fetch(`https://plc.directory/${did}`);
+    if (!plcResponse.ok) throw new Error(`PLC directory error: ${plcResponse.status}`);
+    const plcData = await plcResponse.json();
+    const pdsEndpoint = plcData.service?.find((s) => s.id === '#atproto_pds')?.serviceEndpoint;
+    if (!pdsEndpoint) throw new Error('No PDS endpoint found in DID document');
+    pdsHost = new URL(pdsEndpoint).hostname;
+  } catch (err) {
+    throw new Error(`Bluesky PDS resolution failed: ${err.message}`);
+  }
   const pdsDid = `did:web:${pdsHost}`;
 
   console.log(`Bluesky: PDS DID resolved to ${pdsDid}`);

@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 function authMiddleware(req, res, next) {
   const apiKey = req.headers['x-api-key'];
 
@@ -6,7 +8,13 @@ function authMiddleware(req, res, next) {
     return res.status(500).json({ error: 'Server misconfigured' });
   }
 
-  if (!apiKey || apiKey !== process.env.API_KEY) {
+  if (!apiKey) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const a = Buffer.from(apiKey);
+  const b = Buffer.from(process.env.API_KEY);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
