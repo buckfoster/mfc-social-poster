@@ -28,32 +28,44 @@ function validateBody(req, res, next) {
 }
 
 app.post('/post/twitter', authMiddleware, validateBody, async (req, res) => {
+  const { mediaUrl, caption, isVideo, mediaType } = req.body;
+  console.log(`POST /post/twitter: ${mediaUrl} (${isVideo ? 'video' : 'image'})`);
+
+  let buffer;
   try {
-    const { mediaUrl, caption, isVideo, mediaType } = req.body;
-    console.log(`POST /post/twitter: ${mediaUrl} (${isVideo ? 'video' : 'image'})`);
+    ({ buffer } = await downloadMedia(mediaUrl));
+  } catch (err) {
+    console.error('Media download error:', err);
+    return res.status(500).json({ twitter: { success: false, error: `Media download failed: ${err.message}` } });
+  }
 
-    const { buffer } = await downloadMedia(mediaUrl);
+  try {
     const result = await postToTwitter({ buffer, mediaType, isVideo, caption });
-
     res.json({ twitter: result });
   } catch (err) {
     console.error('Twitter post error:', err);
-    res.status(500).json({ twitter: { success: false, error: err.message } });
+    res.json({ twitter: { success: false, error: err.message } });
   }
 });
 
 app.post('/post/bluesky', authMiddleware, validateBody, async (req, res) => {
+  const { mediaUrl, caption, isVideo, mediaType } = req.body;
+  console.log(`POST /post/bluesky: ${mediaUrl} (${isVideo ? 'video' : 'image'})`);
+
+  let buffer;
   try {
-    const { mediaUrl, caption, isVideo, mediaType } = req.body;
-    console.log(`POST /post/bluesky: ${mediaUrl} (${isVideo ? 'video' : 'image'})`);
+    ({ buffer } = await downloadMedia(mediaUrl));
+  } catch (err) {
+    console.error('Media download error:', err);
+    return res.status(500).json({ bluesky: { success: false, error: `Media download failed: ${err.message}` } });
+  }
 
-    const { buffer } = await downloadMedia(mediaUrl);
+  try {
     const result = await postToBluesky({ buffer, mediaType, isVideo, caption });
-
     res.json({ bluesky: result });
   } catch (err) {
     console.error('Bluesky post error:', err);
-    res.status(500).json({ bluesky: { success: false, error: err.message } });
+    res.json({ bluesky: { success: false, error: err.message } });
   }
 });
 
