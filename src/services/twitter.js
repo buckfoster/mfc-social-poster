@@ -210,7 +210,7 @@ async function pollProcessingStatus(mediaId) {
       throw new Error(`Twitter video processing failed: ${JSON.stringify(statusData.processing_info)}`);
     }
 
-    const waitSeconds = statusData.processing_info?.check_after_secs || 5;
+    const waitSeconds = Math.min(statusData.processing_info?.check_after_secs || 5, 30);
     await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
   }
 

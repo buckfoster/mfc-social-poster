@@ -1,4 +1,8 @@
 const { BskyAgent, RichText } = require('@atproto/api');
+const { execSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 let agent = null;
 let loginTime = null;
@@ -126,10 +130,30 @@ async function postToBluesky({ buffer, mediaType, isVideo, caption }) {
 
   if (isVideo) {
     const blob = await uploadVideo(bskyAgent, buffer, mediaType);
+
+    // Detect actual video dimensions via ffprobe
+    let aspectWidth = 16, aspectHeight = 9;
+    try {
+      const tmpFile = path.join(os.tmpdir(), `bsky-video-${Date.now()}.mp4`);
+      fs.writeFileSync(tmpFile, buffer);
+      const probe = execSync(
+        `ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of json "${tmpFile}"`,
+        { timeout: 10000 }
+      ).toString();
+      fs.unlinkSync(tmpFile);
+      const streams = JSON.parse(probe).streams?.[0];
+      if (streams?.width && streams?.height) {
+        aspectWidth = streams.width;
+        aspectHeight = streams.height;
+      }
+    } catch (e) {
+      console.log('Bluesky: could not detect video dimensions, using 16:9 default');
+    }
+
     embed = {
       $type: 'app.bsky.embed.video',
       video: blob,
-      aspectRatio: { width: 16, height: 9 },
+      aspectRatio: { width: aspectWidth, height: aspectHeight },
     };
   } else {
     const blob = await uploadImage(bskyAgent, buffer, mediaType);

@@ -5,7 +5,11 @@ const { postToTwitter } = require('./services/twitter');
 const { postToBluesky } = require('./services/bluesky');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+
+function sanitizeUrl(url) {
+  try { const u = new URL(url); return u.origin + u.pathname; } catch { return '[invalid url]'; }
+}
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -29,7 +33,7 @@ function validateBody(req, res, next) {
 
 app.post('/post/twitter', authMiddleware, validateBody, async (req, res) => {
   const { mediaUrl, caption, isVideo, mediaType } = req.body;
-  console.log(`POST /post/twitter: ${mediaUrl} (${isVideo ? 'video' : 'image'})`);
+  console.log(`POST /post/twitter: ${sanitizeUrl(mediaUrl)} (${isVideo ? 'video' : 'image'})`);
 
   let buffer;
   try {
@@ -50,7 +54,7 @@ app.post('/post/twitter', authMiddleware, validateBody, async (req, res) => {
 
 app.post('/post/bluesky', authMiddleware, validateBody, async (req, res) => {
   const { mediaUrl, caption, isVideo, mediaType } = req.body;
-  console.log(`POST /post/bluesky: ${mediaUrl} (${isVideo ? 'video' : 'image'})`);
+  console.log(`POST /post/bluesky: ${sanitizeUrl(mediaUrl)} (${isVideo ? 'video' : 'image'})`);
 
   let buffer;
   try {
@@ -71,7 +75,7 @@ app.post('/post/bluesky', authMiddleware, validateBody, async (req, res) => {
 
 app.post('/post/all', authMiddleware, validateBody, async (req, res) => {
   const { mediaUrl, caption, isVideo, mediaType } = req.body;
-  console.log(`POST /post/all: ${mediaUrl} (${isVideo ? 'video' : 'image'})`);
+  console.log(`POST /post/all: ${sanitizeUrl(mediaUrl)} (${isVideo ? 'video' : 'image'})`);
 
   let buffer;
   try {
@@ -118,6 +122,12 @@ app.post('/post/all', authMiddleware, validateBody, async (req, res) => {
   const status = allSuccess ? 200 : anySuccess ? 207 : 500;
 
   res.status(status).json(response);
+});
+
+// Global error handler — prevents stack trace leaks
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.message);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 const PORT = process.env.PORT || 3100;
